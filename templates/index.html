@@ -4,172 +4,109 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hate Speech Detector</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Include Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-            margin: 0;
-            padding: 0;
+        .bar-container {
+            width: 50%;
+            background-color: #f1f1f1;
+            border-radius: 5px;
+            margin: 10px auto;
             display: flex;
-            justify-content: center;
             align-items: center;
-            min-height: 100vh;
+            padding: 5px;
         }
-        .container {
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            text-align: center;
-            width: 80%;
-            max-width: 600px;
-        }
-        h1 {
-            margin-top: 0;
-            color: #333;
-        }
-        .logo {
-            margin-bottom: 20px;
-        }
-        form {
-            margin-top: 20px;
-        }
-        label {
-            font-weight: bold;
-            margin-bottom: 10px;
-            display: block;
-            color: #555;
-        }
-        input[type="text"] {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            margin-bottom: 10px;
-            box-sizing: border-box;
-        }
-        input[type="submit"] {
-            width: 100%;
-            padding: 12px;
-            background-color: #4CAF50;
+        
+        .bar {
+            height: 20px;
+            border-radius: 5px;
+            text-align: right;
+            padding-right: 5px;
             color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
+            display: inline-block;
         }
-        p {
+        
+        .label {
+            width: 150px;
+            text-align: right;
+            padding-right: 10px;
             font-weight: bold;
-            color: #333;
-            margin-top: 20px;
-            font-size: 18px;
         }
-        canvas {
-            margin-top: 20px;
+        
+        .probability-value {
+            margin-left: 10px;
+        }
+        
+        .non-hate { background-color: #4CAF50; }
+        .hate { background-color: #f44336; }
+        .acceptable { background-color: #2196F3; }
+        .inappropriate { background-color: #ff9800; }
+        .offensive { background-color: #9c27b0; }
+        .violent { background-color: #795548; }
+        
+        .form-container {
+            border-radius: 5px;
+            padding: 20px;
+        }
+        
+        .btn-center {
+            display: block;
+            margin: 0 auto;
+        }
+
+        textarea.form-control {
+            width: 60%;
+            margin: 0 auto;
+            border-radius: 10px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <img src="../templates/images.png" alt="Logo" class="logo">
-        <h1>Hate Speech Detector</h1>
-    
-        <form id="sentimentForm">
-            <label for="sentence">Enter a sentence:</label>
-            <input type="text" id="sentence" name="sentence" placeholder="Type your sentence here..." required>
-            <input type="submit" value="Analyze">
+    <div class="container mt-5">
+        <div class="form-container">
+            <form method="post" class="text-center">
+                <div class="form-group">
+                    <h2>Hate Speech Detector</h2>
+                    <h3>Enter your comment:</h3>
+                    <textarea id="comment" name="comment" class="form-control" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary btn-center">Analyze</button>
+            </form>
+        </div>
+
+        {% if probabilities %}
+            <h2 class="mt-5">Probabilities</h2>
+            <div class="bar-container">
+                <div class="label">Non-Hate:</div>
+                <div class="bar non-hate" style="width: calc(50% * {{ probabilities[0] }})"></div>
+                <div class="probability-value">{{ probabilities[0] | round(3) }}</div>
+            </div>
+            <div class="bar-container">
+                <div class="label">Hate:</div>
+                <div class="bar hate" style="width: calc(50% * {{ probabilities[1] }})"></div>
+                <div class="probability-value">{{ probabilities[1] | round(3) }}</div>
+            </div>
             
-        </form>
-        
-        <p id="result"></p>
-        
-        <canvas id="sentimentChart"></canvas>
+            <br><br>
+            
+            <h3>More Details:</h3>
+            <ul class="list-unstyled">
+                {% for label, probability in zip(labels[2:], probabilities[2:]) %}
+                    <li>
+                        <div class="bar-container">
+                            <div class="label">{{ label }}:</div>
+                            <div class="bar {{ label | lower }}" style="width: calc(50% * {{ probability }})"></div>
+                            <div class="probability-value">{{ probability | round(3) }}</div>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
     </div>
 
-    <script>
-        // Initialize window.sentimentChart to null
-        window.sentimentChart = null;
-    
-        document.getElementById('sentimentForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-            var sentence = document.getElementById('sentence').value;
-            analyzeSentiment(sentence);
-        });
-    
-        function analyzeSentiment(sentence) {
-            fetch('/sentiment_analysis', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: 'sentence=' + encodeURIComponent(sentence)
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('result').innerText = "Predicted Sentiment: " + data.sentiment;
-                updateChart(data.sentiment);
-                
-                
-            })
-            .catch(error => console.error('Error:', error));
-        }
-    
-        function updateChart(sentiment) {
-            var ctx = document.getElementById('sentimentChart').getContext('2d');
-            var data = getSentimentData(sentiment);
-    
-            // Check if window.sentimentChart is defined
-            if (window.sentimentChart) {
-                window.sentimentChart.data.datasets[0].data = data;
-                window.sentimentChart.update();
-            } else { // If not, create a new chart instance
-                var chartData = {
-                    labels: ['Neutral', 'No_Hate', 'Hate'],
-                    datasets: [{
-                        label: 'Sentiment Analysis',
-                        data: data,
-                        backgroundColor: [
-                            'rgba(54, 162, 235, 0.2)',
-                            'rgba(75, 192, 192, 0.2)',
-                            'rgba(255, 99, 132, 0.2)'
-                        ],
-                        borderColor: [
-                            'rgba(54, 162, 235, 1)',
-                            'rgba(75, 192, 192, 1)',
-                            'rgba(255, 99, 132, 1)'
-                        ],
-                        borderWidth: 1
-                    }]
-                };
-                var options = {
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                };
-                window.sentimentChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: chartData,
-                    options: options
-                });
-            }
-        }
-    
-        function getSentimentData(sentiment) {
-            var data = [0, 0, 0];
-            if (sentiment === 'Neutral') {
-                data[0] = 1;
-            } else if (sentiment === 'Not-Hate') {
-                data[1] = 1;
-            } else if (sentiment === 'Hate') {
-                data[2] = 1;
-            }
-            return data;
-        }
-    </script>
-    
+    <!-- Include Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
