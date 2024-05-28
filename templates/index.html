@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hate Speech Detector</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            text-align: center;
+            width: 80%;
+            max-width: 600px;
+        }
+        h1 {
+            margin-top: 0;
+            color: #333;
+        }
+        .logo {
+            margin-bottom: 20px;
+        }
+        form {
+            margin-top: 20px;
+        }
+        label {
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: block;
+            color: #555;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+        input[type="submit"] {
+            width: 100%;
+            padding: 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        p {
+            font-weight: bold;
+            color: #333;
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        canvas {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="../templates/images.png" alt="Logo" class="logo">
+        <h1>Hate Speech Detector</h1>
+    
+        <form id="sentimentForm">
+            <label for="sentence">Enter a sentence:</label>
+            <input type="text" id="sentence" name="sentence" placeholder="Type your sentence here..." required>
+            <input type="submit" value="Analyze">
+            
+        </form>
+        
+        <p id="result"></p>
+        
+        <canvas id="sentimentChart"></canvas>
+    </div>
+
+    <script>
+        // Initialize window.sentimentChart to null
+        window.sentimentChart = null;
+    
+        document.getElementById('sentimentForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            var sentence = document.getElementById('sentence').value;
+            analyzeSentiment(sentence);
+        });
+    
+        function analyzeSentiment(sentence) {
+            fetch('/sentiment_analysis', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'sentence=' + encodeURIComponent(sentence)
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('result').innerText = "Predicted Sentiment: " + data.sentiment;
+                updateChart(data.sentiment);
+                
+                
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    
+        function updateChart(sentiment) {
+            var ctx = document.getElementById('sentimentChart').getContext('2d');
+            var data = getSentimentData(sentiment);
+    
+            // Check if window.sentimentChart is defined
+            if (window.sentimentChart) {
+                window.sentimentChart.data.datasets[0].data = data;
+                window.sentimentChart.update();
+            } else { // If not, create a new chart instance
+                var chartData = {
+                    labels: ['Neutral', 'No_Hate', 'Hate'],
+                    datasets: [{
+                        label: 'Sentiment Analysis',
+                        data: data,
+                        backgroundColor: [
+                            'rgba(54, 162, 235, 0.2)',
+                            'rgba(75, 192, 192, 0.2)',
+                            'rgba(255, 99, 132, 0.2)'
+                        ],
+                        borderColor: [
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(255, 99, 132, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                };
+                var options = {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                };
+                window.sentimentChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: chartData,
+                    options: options
+                });
+            }
+        }
+    
+        function getSentimentData(sentiment) {
+            var data = [0, 0, 0];
+            if (sentiment === 'Neutral') {
+                data[0] = 1;
+            } else if (sentiment === 'Not-Hate') {
+                data[1] = 1;
+            } else if (sentiment === 'Hate') {
+                data[2] = 1;
+            }
+            return data;
+        }
+    </script>
+    
+</body>
+</html>
